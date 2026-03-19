@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AssetFlow.Application\AssetFlow.Application.csproj" />
     <ProjectReference Include="..\AssetFlow.Domain\AssetFlow.Domain.csproj" />
   </ItemGroup>
