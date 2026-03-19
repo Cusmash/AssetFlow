@@ -7,7 +7,9 @@ namespace AssetFlow.Domain.Entities
     public enum AssetStatus
     {
         Pending = 1,
-        Active = 2,
-        Archived = 3
+        Uploaded = 2,
+        Processing = 3,
+        Processed = 4,
+        Failed = 5
     }
 }
