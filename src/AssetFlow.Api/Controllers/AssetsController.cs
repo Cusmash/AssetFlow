@@ -1,4 +1,5 @@
-﻿using AssetFlow.Application.DTOs;
+﻿using AssetFlow.Api.Requests;
+using AssetFlow.Application.DTOs;
 using AssetFlow.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +23,30 @@ namespace AssetFlow.Api.Controllers
         {
             var created = await _assetService.CreateAsync(request, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
+        [HttpPost("upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<AssetResponse>> Upload(
+            [FromForm] UploadAssetRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (request.File is null || request.File.Length == 0)
+            {
+                return BadRequest("A file is required.");
+            }
+
+            await using var stream = request.File.OpenReadStream();
+
+            var result = await _assetService.UploadAsync(
+                stream,
+                request.File.FileName,
+                request.File.ContentType,
+                request.Name,
+                request.Description,
+                cancellationToken);
+
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
         [HttpGet]
