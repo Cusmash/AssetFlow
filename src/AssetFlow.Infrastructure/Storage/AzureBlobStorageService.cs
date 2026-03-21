@@ -49,6 +49,35 @@ namespace AssetFlow.Infrastructure.Storage
             };
         }
 
+        public async Task<BlobFileDownloadResult?> DownloadAsync(
+            string blobName,
+            CancellationToken cancellationToken = default)
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            var exists = await blobClient.ExistsAsync(cancellationToken);
+            if (!exists.Value)
+            {
+                return null;
+            }
+
+            var downloadResponse = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
+
+            var contentType = downloadResponse.Value.Details.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+
+            return new BlobFileDownloadResult
+            {
+                Content = downloadResponse.Value.Content,
+                ContentType = contentType,
+                FileName = Path.GetFileName(blobName)
+            };
+        }
+
         private static string BuildBlobName(string fileName)
         {
             var safeFileName = Path.GetFileName(fileName);

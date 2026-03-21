@@ -36,6 +36,11 @@ namespace AssetFlow.Api.Controllers
                 return BadRequest("A file is required.");
             }
 
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return BadRequest("Name is required.");
+            }
+
             await using var stream = request.File.OpenReadStream();
 
             var result = await _assetService.UploadAsync(
@@ -63,6 +68,19 @@ namespace AssetFlow.Api.Controllers
             if (result is null) return NotFound();
 
             return Ok(result);
+        }
+
+        [HttpGet("{id:guid}/download")]
+        public async Task<IActionResult> Download(Guid id, CancellationToken cancellationToken)
+        {
+            var result = await _assetService.DownloadAsync(id, cancellationToken);
+
+            if (result is null)
+            {
+                return NotFound();
+            }
+
+            return File(result.Content, result.ContentType, result.FileName);
         }
     }
 }

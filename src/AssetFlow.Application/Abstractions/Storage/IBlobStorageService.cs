@@ -7,5 +7,9 @@
             string fileName,
             string contentType,
             CancellationToken cancellationToken = default);
+
+        Task<BlobFileDownloadResult?> DownloadAsync(
+            string blobName,
+            CancellationToken cancellationToken = default);
     }
 }

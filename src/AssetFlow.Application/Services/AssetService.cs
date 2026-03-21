@@ -95,6 +95,34 @@ namespace AssetFlow.Application.Services
             return asset is null ? null : MapToResponse(asset);
         }
 
+        public async Task<BlobFileDownloadResult?> DownloadAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            var asset = await _repository.GetByIdAsync(id, cancellationToken);
+            if (asset is null || string.IsNullOrWhiteSpace(asset.BlobName))
+            {
+                return null;
+            }
+
+            var downloadResult = await _blobStorageService.DownloadAsync(asset.BlobName, cancellationToken);
+            if (downloadResult is null)
+            {
+                return null;
+            }
+
+            var fileName = string.IsNullOrWhiteSpace(asset.OriginalFileName)
+                ? downloadResult.FileName
+                : asset.OriginalFileName;
+
+            return new BlobFileDownloadResult
+            {
+                Content = downloadResult.Content,
+                ContentType = downloadResult.ContentType,
+                FileName = fileName
+            };
+        }
+
         private static AssetResponse MapToResponse(Asset asset)
         {
             return new AssetResponse
