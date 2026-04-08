@@ -4,10 +4,21 @@ using AssetFlow.Application.Services;
 using AssetFlow.Infrastructure.Options;
 using AssetFlow.Infrastructure.Persistence;
 using AssetFlow.Infrastructure.Storage;
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Azure.Identity;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
+
+if (!string.IsNullOrWhiteSpace(keyVaultUri))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultUri),
+        new DefaultAzureCredential());
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
