@@ -23,5 +23,11 @@ namespace AssetFlow.Infrastructure.Persistence
             var asset = Assets.FirstOrDefault(x => x.Id == id);
             return Task.FromResult(asset);
         }
+
+        public Task<Asset> UpdateAsync(Asset asset, CancellationToken cancellationToken = default)
+        {
+            var existingAsset = Assets.FirstOrDefault(x => x.Id == asset.Id);
+            return Task.FromResult(existingAsset ?? throw new InvalidOperationException($"Asset with ID {asset.Id} not found."));
+        }
     }
 }

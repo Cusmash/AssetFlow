@@ -7,5 +7,6 @@ namespace AssetFlow.Application.Abstractions
         Task<Asset> CreateAsync(Asset asset, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<Asset>> GetAllAsync(CancellationToken cancellationToken = default);
         Task<Asset?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Asset> UpdateAsync(Asset asset, CancellationToken cancellationToken = default);
     }
 }

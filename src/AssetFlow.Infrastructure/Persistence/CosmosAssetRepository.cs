@@ -97,6 +97,31 @@ namespace AssetFlow.Infrastructure.Persistence
             return null;
         }
 
+        public async Task<Asset> UpdateAsync(Asset asset, CancellationToken cancellationToken = default)
+        {
+            var existing = await GetByIdAsync(asset.Id, cancellationToken);
+
+            if (existing is null)
+            {
+                throw new InvalidOperationException($"Asset with id '{asset.Id}' was not found.");
+            }
+
+            var existingStatus = existing.Status.ToString();
+            var document = MapToDocument(asset);
+
+            await _container.DeleteItemAsync<AssetDocument>(
+                id: existing.Id.ToString(),
+                partitionKey: new PartitionKey(existingStatus),
+                cancellationToken: cancellationToken);
+
+            var response = await _container.CreateItemAsync(
+                document,
+                new PartitionKey(document.Status),
+                cancellationToken: cancellationToken);
+
+            return MapToDomain(response.Resource);
+        }
+
         private static AssetDocument MapToDocument(Asset asset)
         {
             return new AssetDocument
