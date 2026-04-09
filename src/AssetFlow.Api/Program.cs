@@ -1,6 +1,8 @@
 using AssetFlow.Application.Abstractions;
+using AssetFlow.Application.Abstractions.Messaging;
 using AssetFlow.Application.Abstractions.Storage;
 using AssetFlow.Application.Services;
+using AssetFlow.Infrastructure.Messaging;
 using AssetFlow.Infrastructure.Options;
 using AssetFlow.Infrastructure.Persistence;
 using AssetFlow.Infrastructure.Storage;
@@ -44,6 +46,11 @@ builder.Services.Configure<BlobStorageOptions>(
     builder.Configuration.GetSection(BlobStorageOptions.SectionName));
 
 builder.Services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
+
+builder.Services.Configure<ServiceBusOptions>(
+    builder.Configuration.GetSection(ServiceBusOptions.SectionName));
+
+builder.Services.AddSingleton<IAssetProcessingPublisher, AzureServiceBusAssetProcessingPublisher>();
 
 var app = builder.Build();
 

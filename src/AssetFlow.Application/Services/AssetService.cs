@@ -2,6 +2,8 @@
 using AssetFlow.Application.Abstractions.Storage;
 using AssetFlow.Application.DTOs;
 using AssetFlow.Domain.Entities;
+using AssetFlow.Application.Abstractions.Messaging;
+using AssetFlow.Application.Messaging;
 
 namespace AssetFlow.Application.Services
 {
@@ -9,13 +11,16 @@ namespace AssetFlow.Application.Services
     {
         private readonly IAssetRepository _repository;
         private readonly IBlobStorageService _blobStorageService;
+        private readonly IAssetProcessingPublisher _assetProcessingPublisher;
 
         public AssetService(
             IAssetRepository repository,
-            IBlobStorageService blobStorageService)
+            IBlobStorageService blobStorageService,
+            IAssetProcessingPublisher assetProcessingPublisher)
         {
             _repository = repository;
             _blobStorageService = blobStorageService;
+            _assetProcessingPublisher = assetProcessingPublisher;
         }
 
         public async Task<AssetResponse> CreateAsync(CreateAssetRequest request, CancellationToken cancellationToken = default)
@@ -80,6 +85,17 @@ namespace AssetFlow.Application.Services
             };
 
             var created = await _repository.CreateAsync(asset, cancellationToken);
+
+            var message = new AssetProcessingMessage
+            {
+                AssetId = created.Id,
+                BlobName = created.BlobName,
+                BlobContainerName = created.BlobContainerName,
+                CreatedAtUtc = created.CreatedAtUtc
+            };
+
+            await _assetProcessingPublisher.PublishAsync(message, cancellationToken);
+
             return MapToResponse(created);
         }
 
