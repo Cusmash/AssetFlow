@@ -4,6 +4,7 @@ using AssetFlow.Application.DTOs;
 using AssetFlow.Domain.Entities;
 using AssetFlow.Application.Abstractions.Messaging;
 using AssetFlow.Application.Messaging;
+using Microsoft.Extensions.Logging;
 
 namespace AssetFlow.Application.Services
 {
@@ -12,15 +13,18 @@ namespace AssetFlow.Application.Services
         private readonly IAssetRepository _repository;
         private readonly IBlobStorageService _blobStorageService;
         private readonly IAssetProcessingPublisher _assetProcessingPublisher;
+        private readonly ILogger<AssetService> _logger;
 
         public AssetService(
             IAssetRepository repository,
             IBlobStorageService blobStorageService,
-            IAssetProcessingPublisher assetProcessingPublisher)
+            IAssetProcessingPublisher assetProcessingPublisher,
+            ILogger<AssetService> logger)
         {
             _repository = repository;
             _blobStorageService = blobStorageService;
             _assetProcessingPublisher = assetProcessingPublisher;
+            _logger = logger;
         }
 
         public async Task<AssetResponse> CreateAsync(CreateAssetRequest request, CancellationToken cancellationToken = default)
@@ -65,38 +69,73 @@ namespace AssetFlow.Application.Services
                 contentType = "application/octet-stream";
             }
 
-            var uploadResult = await _blobStorageService.UploadAsync(
-                fileStream,
-                originalFileName,
-                contentType,
-                cancellationToken);
-
-            var asset = new Asset
+            try
             {
-                Name = name,
-                Description = description,
-                ContentType = uploadResult.ContentType,
-                Status = AssetStatus.Uploaded,
-                BlobContainerName = uploadResult.ContainerName,
-                BlobName = uploadResult.BlobName,
-                OriginalFileName = originalFileName,
-                FileSizeBytes = uploadResult.FileSizeBytes,
-                StorageUri = uploadResult.BlobUri.ToString()
-            };
+                _logger.LogInformation(
+                        "Starting asset upload. FileName: {FileName}, ContentType: {ContentType} ",
+                        name,
+                        contentType);
 
-            var created = await _repository.CreateAsync(asset, cancellationToken);
+                var uploadResult = await _blobStorageService.UploadAsync(
+                    fileStream,
+                    originalFileName,
+                    contentType,
+                    cancellationToken);
 
-            var message = new AssetProcessingMessage
+                _logger.LogInformation(
+                    "Blob upload completed. BlobName: {BlobName}, ContainerName: {ContainerName}, StorageUri: {StorageUri}",
+                    uploadResult.BlobName,
+                    uploadResult.ContainerName,
+                    uploadResult.BlobUri);
+
+                var asset = new Asset
+                {
+                    Name = name,
+                    Description = description,
+                    ContentType = uploadResult.ContentType,
+                    Status = AssetStatus.Uploaded,
+                    BlobContainerName = uploadResult.ContainerName,
+                    BlobName = uploadResult.BlobName,
+                    OriginalFileName = originalFileName,
+                    FileSizeBytes = uploadResult.FileSizeBytes,
+                    StorageUri = uploadResult.BlobUri.ToString()
+                };
+
+                var created = await _repository.CreateAsync(asset, cancellationToken);
+
+                _logger.LogInformation(
+                    "Asset metadata saved. AssetId: {AssetId}, Status: {Status}",
+                    created.Id,
+                    created.Status);
+
+                var message = new AssetProcessingMessage
+                {
+                    AssetId = created.Id,
+                    BlobName = created.BlobName,
+                    BlobContainerName = created.BlobContainerName,
+                    CreatedAtUtc = created.CreatedAtUtc
+                };
+
+                await _assetProcessingPublisher.PublishAsync(message, cancellationToken);
+
+                _logger.LogInformation(
+                    "Asset processing message published. AssetId: {AssetId}, BlobName: {BlobName}",
+                    created.Id,
+                    created.BlobName);
+
+                return MapToResponse(created);
+            }
+            catch (Exception ex)
             {
-                AssetId = created.Id,
-                BlobName = created.BlobName,
-                BlobContainerName = created.BlobContainerName,
-                CreatedAtUtc = created.CreatedAtUtc
-            };
 
-            await _assetProcessingPublisher.PublishAsync(message, cancellationToken);
+                _logger.LogError(
+                     ex,
+                     "Asset upload flow failed. FileName: {FileName}, Name: {Name}",
+                     originalFileName,
+                     name);
 
-            return MapToResponse(created);
+                throw;
+            }
         }
 
         public async Task<IReadOnlyList<AssetResponse>> GetAllAsync(CancellationToken cancellationToken = default)
